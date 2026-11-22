@@ -43,7 +43,7 @@ cp .env.example .env        # then put your key in .env
 | `LLM_MODEL` | `Qwen/Qwen3.8-27B` | Model name |
 | `LLM_REQUESTS_PER_MINUTE` | `9` | Client-side throttle (Hetzner allows 10/min) |
 | `LLM_DISABLE_THINKING` | `true` | Turns off Qwen "thinking" (see [section 6](#6-llm-provider-and-model)) |
-| `LLM_STRUCTURED_OUTPUT` | `json_schema` | How the router asks for structured output: `json_schema`, `function_calling` or `json_mode` (needed for Groq) |
+| `LLM_STRUCTURED_OUTPUT` | `json_mode` | How the router asks for structured output: `json_mode` (JSON object + the schema in the prompt), `function_calling` or `json_schema` (see [section 6](#6-llm-provider-and-model) for why `json_schema` is not the default) |
 
 ```bash
 python -m skill_agent "What is 15% of 240?"      # one-shot
@@ -51,7 +51,7 @@ python -m skill_agent                             # interactive; no memory betwe
 python -m skill_agent --plan "سلام، حالت چطوره؟"   # also show which skills were chosen
 python -m skill_agent --graph                     # print the graph as Mermaid
 python -m skill_agent.check_llm                   # 2-request connectivity check
-pytest                                            # 89 unit tests, no network needed
+pytest                                            # 93 unit tests, no network needed
 python -m evals.run                               # live evaluation, ~5 minutes (rate limit)
 ```
 
@@ -211,22 +211,32 @@ failure modes, and change the prompt only where a failure was observed.
   on, the routing JSON contained repeated items (`["summarizer","translator","summarizer", ...]`) and took
   200 tokens / 4.4 s; with thinking off it was correct, 26 tokens / 2.3 s. Set via
   `chat_template_kwargs.enable_thinking=false`; `LLM_DISABLE_THINKING=false` reverts it.
-- **Rate limit:** the client throttles to 9 requests/min and retries on HTTP 429 (up to 5 times).
+- **Rate limit and timeouts:** the client throttles to 9 requests/min, retries on HTTP 429 and on
+  timeouts (up to 5 times, 60 s per request).
+- **Structured-output method: `json_mode` by default, and why.** The router needs reliable JSON.
+  With `json_schema`, my first Hetzner evaluation scored 15/15 (kept as
+  [`REPORT-hetzner-json_schema.md`](evals/results/REPORT-hetzner-json_schema.md)). The next day the same
+  call **timed out on 2 of 2 tested prompts** (45 s), while `json_mode` and `function_calling` answered
+  the same prompts in 1-4 s, and a clean-clone evaluation aborted twice at the same case. I treat
+  this as provider instability and made `json_mode` the default. Because `json_mode` does not
+  enforce a schema, the router puts the real JSON schema into the prompt and validates the reply
+  with Pydantic (one retry, then fallback). First attempt without the schema in the prompt made a
+  model omit a required field, which is how I found that the schema must be shown.
 - **Other providers I tried** (the client is any OpenAI-compatible endpoint; observations from
   2026-11-22, free tiers change):
 
 | Provider / model | Result |
 |---|---|
-| **Groq**, `qwen/qwen3.8-27b` (same model, "Preview" stage) | Works: **15/15** on the evaluation set, identical routing to Hetzner ([report](evals/results/REPORT-groq.md)). Needs `LLM_DISABLE_THINKING=false` and `LLM_STRUCTURED_OUTPUT=json_mode`. Limits shown in my console: 30 requests/min, **8K tokens/min**, 1K requests/day, 200K tokens/day |
+| **Groq**, `qwen/qwen3.8-27b` (same model, "Preview" stage) | Works: **15/15** on the evaluation set, identical routing to Hetzner ([report](evals/results/REPORT-groq.md)). Only extra setting: `LLM_DISABLE_THINKING=false` (Groq rejects `chat_template_kwargs`). Limits shown in my console: 30 requests/min, **8K tokens/min**, 1K requests/day, 200K tokens/day |
 | Google AI Studio, `gemma-4-31b-it` (30.7B) | **Not usable in my tests:** HTTP 503 "high demand" on 2 of 3 requests, tool calling returned no `tool_calls` and leaked the model's `<thought>` text, and both thinking parameters were rejected |
 | OpenRouter, `google/gemma-4-31b-it:free` | Not usable when tried: HTTP 429 from the provider. Not tested further |
 
-  **Groq gotcha (found by the evaluation):** with the default `json_schema` mode Groq returns the
+  **Groq gotcha (found by the evaluation):** with `json_schema` mode Groq returns the
   JSON wrapped in an extra empty key (`{"": {"steps": [...]}}`), which fails validation, so the
   router asked clarification questions for everything: **9/15 (60%)**, with 0/4 on clear Persian
   prompts ([report](evals/results/REPORT-groq-json_schema.md)). The model's judgement was fine
   (the raw reply picked the right skill); switching to `json_mode` (or `function_calling`) fixed
-  it. This is why the structured-output method is a setting. Rate limits are per-token on Groq, so a
+  it. This is why the structured-output method is a setting, and now why `json_mode` is the default. Rate limits are per-token on Groq, so a
   full evaluation takes a few minutes there as well.
 
 ---
@@ -272,8 +282,9 @@ the acceptable outcomes (for chat prompts, `general_chat` and `fallback` both co
 
 Per-prompt table: [`evals/results/REPORT.md`](evals/results/REPORT.md). Reproduce with
 `python -m evals.run` (add `--tag NAME` to keep results from another provider separate). The same
-set gives 15/15 on Groq with `json_mode` ([report](evals/results/REPORT-groq.md)); both runs use the same
-model, so this shows provider-independence, not model-independence.
+set gives 15/15 on Groq with the same defaults ([report](evals/results/REPORT-groq.md)), and the earlier
+Hetzner `json_schema` run was also 15/15 with identical routing. All runs use the same model, so this shows
+provider-independence, not model-independence.
 
 **How much to trust this:** 15 prompts cannot tell 95% from 70% true accuracy; the set was
 written by the same assistant that built the system (not blind); the acceptable-outcome lists
@@ -306,7 +317,10 @@ Treat it as a working sanity check with a score, not a benchmark.
   translations (human review for Persian).
 - **Latency and cost:** 2-3 sequential LLM calls per prompt; no streaming; the free tier allows
   10 requests/min, so it does not scale. Production: paid or self-hosted inference, caching.
-- **Provider risk:** the free tier is experimental and may end or change.
+- **Provider risk:** the free tier is experimental and may end or change; behaviour did change between
+  two days (see the `json_schema` timeouts in section 6). `json_mode` does not enforce the schema, so a
+  malformed reply falls back to chat after one retry instead of being rejected by the provider.
+  The evaluation runner records an LLM failure as a failed case and continues.
 - **Prompt-injection:** skills are told to treat embedded instructions as content (tested once on the
   translator), but there is no systematic injection testing.
 - **Calculator scope** (see assumptions); no unit or currency support.
@@ -335,7 +349,7 @@ assistant are in the repo:
 ```
 src/skill_agent/   config, llm, text, safe_math, registry, shortlist, router, graph, agent, cli
 src/skill_agent/skills/   base + the four skills
-tests/             89 unit tests (fake LLMs; no network)
+tests/             93 unit tests (fake LLMs; no network)
 evals/             dataset, scoring, runner, results
 docs/              SPEC, PROMPT_NOTES, graph.mmd, task brief
 ```
