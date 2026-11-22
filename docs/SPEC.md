@@ -115,6 +115,7 @@ more than 4 skills, more than 2 simultaneous skills.
 | 5 | `feat/evaluation` | 15-prompt eval set + runner + report |
 | 5b | `fix/over-limit-notice` | Tell the user when a requested skill was skipped |
 | 6 | `docs/readme` | README, spec sync |
+| 7 | `feat/provider-alternatives` | Configurable structured-output method; Groq tested as an alternative provider |
 
 Pushes are done by the repo owner (or with their explicit approval each time).
 

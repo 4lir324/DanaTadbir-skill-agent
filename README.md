@@ -342,5 +342,5 @@ docs/              SPEC, PROMPT_NOTES, graph.mmd, task brief
 
 Work was done on feature branches in the order given in the SPEC (`docs/spec`,
 `feat/scaffold-llm`, `feat/registry-router`, `feat/skills`, `feat/graph-cli`,
-`feat/evaluation`, `fix/over-limit-notice`, `docs/readme`) with small commits and conventional
+`feat/evaluation`, `fix/over-limit-notice`, `docs/readme`, `feat/provider-alternatives`) with small commits and conventional
 prefixes (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`).
