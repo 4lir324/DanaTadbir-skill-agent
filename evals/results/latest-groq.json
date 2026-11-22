@@ -1,0 +1,205 @@
+{
+  "model": "qwen/qwen3.8-27b",
+  "summary": {
+    "routing_accuracy": 1.0,
+    "routing_correct": 15,
+    "total": 15,
+    "by_category": {
+      "clear_en": "4/4",
+      "clear_fa": "4/4",
+      "multi": "3/3",
+      "ambiguous": "1/1",
+      "over_limit": "1/1",
+      "distractor": "1/1",
+      "no_skill_fa": "1/1"
+    },
+    "calculator_answers_correct": "3/3"
+  },
+  "results": [
+    {
+      "id": 1,
+      "category": "clear_en",
+      "prompt": "Can you condense this paragraph for me? Remote work has grown rapidly since 2020, giving employees more flexibility but also creating new challenges around collaboration, communication and isolation. Many companies now use a hybrid model to balance both sides.",
+      "expected": [
+        "summarizer"
+      ],
+      "outcome": "summarizer",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "Since 2020, the rapid growth of remote work has increased employee flexibility while introducing challenges in collaboration, communication, and isolation, leading many companies to adopt hybrid models to balance these aspects."
+    },
+    {
+      "id": 2,
+      "category": "clear_en",
+      "prompt": "How would you say 'where is the train station' in German?",
+      "expected": [
+        "translator"
+      ],
+      "outcome": "translator",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "Wo ist der Bahnhof?"
+    },
+    {
+      "id": 3,
+      "category": "clear_en",
+      "prompt": "What's 18 multiplied by 47, minus 100?",
+      "expected": [
+        "calculator"
+      ],
+      "outcome": "calculator",
+      "routing_correct": true,
+      "answer_ok": true,
+      "answer": "18 * 47 - 100 = 746"
+    },
+    {
+      "id": 4,
+      "category": "clear_en",
+      "prompt": "Tell me a fun fact about octopuses.",
+      "expected": [
+        "general_chat",
+        "fallback"
+      ],
+      "outcome": "general_chat",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "Octopuses have three hearts and blue blood! Two of their hearts pump blood to the gills, while the third pumps it to the rest of the body."
+    },
+    {
+      "id": 5,
+      "category": "clear_fa",
+      "prompt": "لطفاً این پاراگراف را کوتاه‌تر کن: کار از راه دور از سال ۲۰۲۰ به‌سرعت گسترش یافته است. این شیوه به کارمندان انعطاف بیشتری می‌دهد، اما چالش‌هایی مانند همکاری تیمی و احساس انزوا را هم به همراه دارد. بسیاری از شرکت‌ها اکنون از مدل ترکیبی استفاده می‌کنند.",
+      "expected": [
+        "summarizer"
+      ],
+      "outcome": "summarizer",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "کار از راه دور از ۲۰۲۰ گسترش یافته و با وجود انعطاف بیشتر، چالش‌هایی مانند انزوا دارد؛ لذا بسیاری از شرکت‌ها از مدل ترکیبی استفاده می‌کنند."
+    },
+    {
+      "id": 6,
+      "category": "clear_fa",
+      "prompt": "این جمله رو برام به انگلیسی بگو: من هر روز صبح قبل از رفتن به سر کار قهوه می‌خورم.",
+      "expected": [
+        "translator"
+      ],
+      "outcome": "translator",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "I drink coffee every morning before going to work."
+    },
+    {
+      "id": 7,
+      "category": "clear_fa",
+      "prompt": "نصف ۸۶۰ به علاوه ۱۵ می‌شود چند؟",
+      "expected": [
+        "calculator"
+      ],
+      "outcome": "calculator",
+      "routing_correct": true,
+      "answer_ok": true,
+      "answer": "860 / 2 + 15 = 445"
+    },
+    {
+      "id": 8,
+      "category": "clear_fa",
+      "prompt": "امروز خیلی خسته‌ام، پیشنهادی برای استراحت داری؟",
+      "expected": [
+        "general_chat",
+        "fallback"
+      ],
+      "outcome": "general_chat",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "کاملاً درکت می‌کنم؛ خستگی گاهی نیاز به یک توقف کامل دارد. پیشنهاد می‌کنم گوشی را کنار بگذاری، یک چای یا دمنوش آرامش‌بخش درست کنی و در سکوت یا با موسیقی ملایم کمی دراز بکشی. اگر دوست داشتی، می‌توانی یک متن کوتاه یا کتاب را برایم بفرستی تا خلاصه‌اش کنم و ذهنت را درگیر نکند."
+    },
+    {
+      "id": 9,
+      "category": "multi",
+      "prompt": "Give me a short version of the following text, but in Persian: The city council approved a new bike lane network that will connect the university, the central station and the main shopping district. Construction starts in spring and is expected to take eighteen months, with a total budget of twelve million euros.",
+      "expected": [
+        "summarizer>translator"
+      ],
+      "outcome": "summarizer>translator",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "شورای شهر شبکه جدید مسیرهای دوچرخه‌سواری را تصویب کرد که دانشگاه، ایستگاه مرکزی و منطقه اصلی خرید را به هم متصل می‌کند. ساخت‌وساز از بهار آغاز می‌شود و با بودجه ۱۲ میلیون یورو، ۱۸ ماه طول خواهد کشید."
+    },
+    {
+      "id": 10,
+      "category": "multi",
+      "prompt": "این متن را اول به فارسی ترجمه کن و بعد خلاصه‌اش کن: Electric vehicles are becoming more popular as battery prices fall. Governments offer tax incentives, and charging networks are expanding quickly. Still, many drivers worry about range and charging time on long trips.",
+      "expected": [
+        "translator>summarizer"
+      ],
+      "outcome": "translator>summarizer",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "با کاهش قیمت باتری‌ها، مشوق‌های مالیاتی دولت‌ها و گسترش سریع شبکه‌های شارژ، محبوبیت خودروهای برقی افزایش یافته است؛ هرچند نگرانی رانندگان نسبت به برد حرکتی و زمان شارژ در سفرهای طولانی همچنان پابرجاست."
+    },
+    {
+      "id": 11,
+      "category": "multi",
+      "prompt": "Translate 'thank you very much' to Persian and also tell me what 144 divided by 12 is.",
+      "expected": [
+        "translator+calculator"
+      ],
+      "outcome": "translator+calculator",
+      "routing_correct": true,
+      "answer_ok": true,
+      "answer": "[translator]\nخیلی ممنون\n\n[calculator]\n144 / 12 = 12"
+    },
+    {
+      "id": 12,
+      "category": "ambiguous",
+      "prompt": "translate",
+      "expected": [
+        "clarify"
+      ],
+      "outcome": "clarify",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "Please provide the text you would like to translate and specify the target language."
+    },
+    {
+      "id": 13,
+      "category": "over_limit",
+      "prompt": "Summarize the following text, translate the summary into Persian, and also calculate 25 times 4: The harvest festival brings together farmers from nearby villages. They sell fruit, vegetables and handmade goods, and the evening ends with music and dancing in the main square.",
+      "expected": [
+        "summarizer>translator",
+        "summarizer+calculator",
+        "translator+calculator"
+      ],
+      "outcome": "summarizer>translator",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "فصل برداشت محصول کشاورزان روستاهای اطراف را گرد هم می‌آورد؛ آن‌ها میوه، سبزیجات و کالاهای دست‌ساز می‌فروشند و شب با موسیقی و رقص در میدان اصلی به پایان می‌رسد.\n\n(Note: at most 2 skills run per request; not done: calculator.)\n(توجه: در هر درخواست حداکثر ۲ مهارت اجرا می‌شود؛ انجام نشد: calculator.)"
+    },
+    {
+      "id": 14,
+      "category": "distractor",
+      "prompt": "Summarize: The company earned 5 million dollars in 2023 and 7 million in 2024, so its revenue grew by 2 million. The CEO attributes the growth to new products and a stronger presence in Asian markets.",
+      "expected": [
+        "summarizer"
+      ],
+      "outcome": "summarizer",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "The company's revenue increased by 2 million dollars, rising from 5 million in 2023 to 7 million in 2024, a growth the CEO attributes to new products and a stronger presence in Asian markets."
+    },
+    {
+      "id": 15,
+      "category": "no_skill_fa",
+      "prompt": "پایتخت استرالیا کدام شهر است؟",
+      "expected": [
+        "general_chat",
+        "fallback"
+      ],
+      "outcome": "general_chat",
+      "routing_correct": true,
+      "answer_ok": null,
+      "answer": "پایتخت استرالیا شهر **کانبرا** است."
+    }
+  ]
+}
