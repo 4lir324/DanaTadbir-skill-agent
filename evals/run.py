@@ -1,9 +1,11 @@
-"""Run the evaluation set against the live model: `python -m evals.run`.
+"""Run the evaluation set against the live model: `python -m evals.run [--tag NAME]`.
 
-Writes evals/results/latest.json and evals/results/REPORT.md.
+Writes evals/results/latest.json and REPORT.md (or latest-NAME.json / REPORT-NAME.md with --tag,
+so runs against different providers do not overwrite each other).
 Makes ~2-3 LLM calls per prompt, throttled to the provider's rate limit.
 """
 
+import argparse
 import json
 from collections import defaultdict
 from datetime import date
@@ -76,7 +78,17 @@ def render_report(results: list[dict], summary: dict, model: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main() -> None:
+def _result_paths(tag: str | None) -> tuple[Path, Path]:
+    suffix = f"-{tag}" if tag else ""
+    return RESULTS_DIR / f"latest{suffix}.json", RESULTS_DIR / f"REPORT{suffix}.md"
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(prog="evals.run")
+    parser.add_argument("--tag", help="suffix for result files, e.g. the provider name")
+    args = parser.parse_args(argv)
+    json_path, report_path = _result_paths(args.tag)
+
     settings = load_settings()
     agent = create_agent(settings)
     cases = json.loads(DATASET.read_text(encoding="utf-8"))
@@ -91,12 +103,8 @@ def main() -> None:
     summary = summarize(results)
     RESULTS_DIR.mkdir(exist_ok=True)
     payload = {"model": settings.model, "summary": summary, "results": results}
-    (RESULTS_DIR / "latest.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    (RESULTS_DIR / "REPORT.md").write_text(
-        render_report(results, summary, settings.model), encoding="utf-8"
-    )
+    json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    report_path.write_text(render_report(results, summary, settings.model), encoding="utf-8")
     print(f"\nRouting accuracy: {summary['routing_correct']}/{summary['total']}")
 
 
