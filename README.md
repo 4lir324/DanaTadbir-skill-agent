@@ -43,6 +43,7 @@ cp .env.example .env        # then put your key in .env
 | `LLM_MODEL` | `Qwen/Qwen3.8-27B` | Model name |
 | `LLM_REQUESTS_PER_MINUTE` | `9` | Client-side throttle (Hetzner allows 10/min) |
 | `LLM_DISABLE_THINKING` | `true` | Turns off Qwen "thinking" (see [section 6](#6-llm-provider-and-model)) |
+| `LLM_STRUCTURED_OUTPUT` | `json_schema` | How the router asks for structured output: `json_schema`, `function_calling` or `json_mode` (needed for Groq) |
 
 ```bash
 python -m skill_agent "What is 15% of 240?"      # one-shot
@@ -50,7 +51,7 @@ python -m skill_agent                             # interactive; no memory betwe
 python -m skill_agent --plan "سلام، حالت چطوره؟"   # also show which skills were chosen
 python -m skill_agent --graph                     # print the graph as Mermaid
 python -m skill_agent.check_llm                   # 2-request connectivity check
-pytest                                            # 87 unit tests, no network needed
+pytest                                            # 89 unit tests, no network needed
 python -m evals.run                               # live evaluation, ~5 minutes (rate limit)
 ```
 
@@ -211,10 +212,22 @@ failure modes, and change the prompt only where a failure was observed.
   200 tokens / 4.4 s; with thinking off it was correct, 26 tokens / 2.3 s. Set via
   `chat_template_kwargs.enable_thinking=false`; `LLM_DISABLE_THINKING=false` reverts it.
 - **Rate limit:** the client throttles to 9 requests/min and retries on HTTP 429 (up to 5 times).
-- **Alternative provider:** because the client is just an OpenAI-compatible endpoint,
-  OpenRouter's free `google/gemma-4-31b-it:free` (about 30.7B parameters, per its listing) should be
-  usable (`.env.example` shows the settings). **I tried it once and OpenRouter answered
-  HTTP 429, so this path is untested, and all numbers in this README are for Qwen3.8-27B.**
+- **Other providers I tried** (the client is any OpenAI-compatible endpoint; observations from
+  2026-11-22, free tiers change):
+
+| Provider / model | Result |
+|---|---|
+| **Groq**, `qwen/qwen3.8-27b` (same model, "Preview" stage) | Works: **15/15** on the evaluation set, identical routing to Hetzner ([report](evals/results/REPORT-groq.md)). Needs `LLM_DISABLE_THINKING=false` and `LLM_STRUCTURED_OUTPUT=json_mode`. Limits shown in my console: 30 requests/min, **8K tokens/min**, 1K requests/day, 200K tokens/day |
+| Google AI Studio, `gemma-4-31b-it` (30.7B) | **Not usable in my tests:** HTTP 503 "high demand" on 2 of 3 requests, tool calling returned no `tool_calls` and leaked the model's `<thought>` text, and both thinking parameters were rejected |
+| OpenRouter, `google/gemma-4-31b-it:free` | Not usable when tried: HTTP 429 from the provider. Not tested further |
+
+  **Groq gotcha (found by the evaluation):** with the default `json_schema` mode Groq returns the
+  JSON wrapped in an extra empty key (`{"": {"steps": [...]}}`), which fails validation, so the
+  router asked clarification questions for everything: **9/15 (60%)**, with 0/4 on clear Persian
+  prompts ([report](evals/results/REPORT-groq-json_schema.md)). The model's judgement was fine
+  (the raw reply picked the right skill); switching to `json_mode` (or `function_calling`) fixed
+  it. This is why the structured-output method is a setting. Rate limits are per-token on Groq, so a
+  full evaluation takes a few minutes there as well.
 
 ---
 
@@ -258,7 +271,9 @@ the acceptable outcomes (for chat prompts, `general_chat` and `fallback` both co
 | Calculator answers correct (3 checked: 746, 445, 12) | 3/3 |
 
 Per-prompt table: [`evals/results/REPORT.md`](evals/results/REPORT.md). Reproduce with
-`python -m evals.run`.
+`python -m evals.run` (add `--tag NAME` to keep results from another provider separate). The same
+set gives 15/15 on Groq with `json_mode` ([report](evals/results/REPORT-groq.md)); both runs use the same
+model, so this shows provider-independence, not model-independence.
 
 **How much to trust this:** 15 prompts cannot tell 95% from 70% true accuracy; the set was
 written by the same assistant that built the system (not blind); the acceptable-outcome lists
@@ -320,7 +335,7 @@ assistant are in the repo:
 ```
 src/skill_agent/   config, llm, text, safe_math, registry, shortlist, router, graph, agent, cli
 src/skill_agent/skills/   base + the four skills
-tests/             87 unit tests (fake LLMs; no network)
+tests/             89 unit tests (fake LLMs; no network)
 evals/             dataset, scoring, runner, results
 docs/              SPEC, PROMPT_NOTES, graph.mmd, task brief
 ```
