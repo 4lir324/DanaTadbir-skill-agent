@@ -22,6 +22,11 @@ from skill_agent.skills.base import SkillCard, SkillRequest
 logger = logging.getLogger(__name__)
 
 SKILL_FAILED_MESSAGE = "Sorry, the {skill} skill failed to handle this request."
+# Bilingual on purpose: the router does not report the user's language.
+SKIPPED_NOTE = (
+    "(Note: at most 2 skills run per request; not done: {skills}.)\n"
+    "(توجه: در هر درخواست حداکثر ۲ مهارت اجرا می‌شود؛ انجام نشد: {skills}.)"
+)
 
 
 class AgentState(TypedDict, total=False):
@@ -103,6 +108,8 @@ class AgentGraph:
             answer = outputs[-1]  # a chained step already contains the earlier result
         else:
             answer = "\n\n".join(f"[{s.skill}]\n{out}" for s, out in zip(steps, outputs, strict=True))
+        if state["decision"].skipped:
+            answer += "\n\n" + SKIPPED_NOTE.format(skills=", ".join(state["decision"].skipped))
         return {"answer": answer, "path": "skills"}
 
     def _clarify(self, state: AgentState) -> AgentState:

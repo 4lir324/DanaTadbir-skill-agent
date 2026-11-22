@@ -70,6 +70,19 @@ def test_two_independent_skills_are_both_returned_with_labels():
     assert state["answer"] == "[calculator]\ncalculator(2+2)\n\n[translator]\ntranslator(hi)"
 
 
+def test_note_is_added_when_extra_skills_were_skipped():
+    decision = RoutingDecision(steps=[_step("calculator", "2+2")])
+    decision.mark_skipped(["translator"])
+    agent, _, _ = _agent(decision, RecordingSkill("calculator"))
+    answer = agent.invoke("p")["answer"]
+    assert answer.startswith("calculator(2+2)") and "not done: translator" in answer
+
+
+def test_no_note_when_nothing_was_skipped():
+    agent, _, _ = _agent(RoutingDecision(steps=[_step("summarizer", "x")]))
+    assert agent.invoke("p")["answer"] == "summarizer(x)"
+
+
 def test_no_match_falls_back_to_general_chat():
     agent, _, registry = _agent(RoutingDecision())
     state = agent.invoke("how is the moon?")
