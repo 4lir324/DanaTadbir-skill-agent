@@ -8,5 +8,7 @@ from skill_agent.router import Router
 
 
 def create_agent(settings: Settings | None = None) -> AgentGraph:
-    llm = build_llm(settings or load_settings())
-    return AgentGraph(registry=default_registry(), router=Router(llm), llm=llm)
+    settings = settings or load_settings()
+    llm = build_llm(settings)
+    router = Router(llm, method=settings.structured_output_method)
+    return AgentGraph(registry=default_registry(), router=router, llm=llm)

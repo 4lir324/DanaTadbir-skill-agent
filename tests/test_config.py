@@ -11,6 +11,7 @@ ENV_NAMES = [
     "LLM_MODEL",
     "LLM_REQUESTS_PER_MINUTE",
     "LLM_DISABLE_THINKING",
+    "LLM_STRUCTURED_OUTPUT",
 ]
 
 
@@ -57,3 +58,13 @@ def test_build_llm_sets_thinking_off_and_retries(monkeypatch):
     assert llm.model_name == config.DEFAULT_MODEL
     assert llm.extra_body == {"chat_template_kwargs": {"enable_thinking": False}}
     assert llm.max_retries == 5
+
+
+def test_structured_output_method_default_and_validation(monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "k")
+    assert load_settings().structured_output_method == "json_schema"
+    monkeypatch.setenv("LLM_STRUCTURED_OUTPUT", "function_calling")
+    assert load_settings().structured_output_method == "function_calling"
+    monkeypatch.setenv("LLM_STRUCTURED_OUTPUT", "nonsense")
+    with pytest.raises(ConfigError):
+        load_settings()

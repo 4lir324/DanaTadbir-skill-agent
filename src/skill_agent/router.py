@@ -111,16 +111,20 @@ def sanitize(decision: RoutingDecision, allowed: set[str]) -> RoutingDecision:
 
 
 class Router:
-    def __init__(self, llm: BaseChatModel) -> None:
-        self._structured_llm = llm.with_structured_output(RoutingDecision)
+    def __init__(self, llm: BaseChatModel, method: str = "json_schema") -> None:
+        self._structured_llm = llm.with_structured_output(RoutingDecision, method=method)
+        self._json_mode = method == "json_mode"
 
     def route(self, prompt: str, candidates: list[SkillCard]) -> RoutingDecision:
         """Ask the LLM to pick skills among `candidates`. Never raises on bad LLM output."""
         if not candidates:
             return RoutingDecision()
 
+        system_prompt = build_system_prompt(candidates)
+        if self._json_mode:  # some providers require the word "JSON" in the prompt
+            system_prompt += "\nReply with a single JSON object."
         messages = [
-            SystemMessage(build_system_prompt(candidates)),
+            SystemMessage(system_prompt),
             HumanMessage(prompt),
         ]
         allowed = {card.name for card in candidates}

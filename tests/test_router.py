@@ -92,3 +92,11 @@ def test_no_candidates_means_no_llm_call():
     llm = FakeStructuredLLM([])
     result = Router(llm).route("zzzz qqqq", [])
     assert result.steps == [] and llm.calls == []
+
+
+def test_json_mode_adds_json_hint_to_the_prompt():
+    llm = FakeStructuredLLM([RoutingDecision(), RoutingDecision()])
+    cards = _cards()
+    Router(llm, method="json_mode").route("hello", cards)
+    Router(llm).route("hello", cards)
+    assert "JSON" in llm.calls[0][0].content and "JSON" not in llm.calls[1][0].content

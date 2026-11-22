@@ -9,6 +9,10 @@ DEFAULT_BASE_URL = "https://inference.hetzner.com/v1"
 DEFAULT_MODEL = "Qwen/Qwen3.8-27B"
 # Hetzner's free tier allows 10 requests / 60 s; stay slightly below it.
 DEFAULT_REQUESTS_PER_MINUTE = 9
+# How the router asks the LLM for structured output. Providers differ in what they support
+# well (Groq wraps `json_schema` output in an extra key, so it needs another method).
+STRUCTURED_OUTPUT_METHODS = ("json_schema", "function_calling", "json_mode")
+DEFAULT_STRUCTURED_OUTPUT_METHOD = "json_schema"
 
 
 class ConfigError(RuntimeError):
@@ -22,6 +26,7 @@ class Settings:
     api_key: str
     requests_per_minute: int
     disable_thinking: bool
+    structured_output_method: str
 
 
 def _first_env(*names: str) -> str | None:
@@ -50,6 +55,12 @@ def load_settings() -> Settings:
     if not api_key:
         raise ConfigError("Missing API key: set LLM_API_KEY (or HETZNER_API_KEY) in .env")
 
+    method = os.environ.get("LLM_STRUCTURED_OUTPUT", DEFAULT_STRUCTURED_OUTPUT_METHOD)
+    if method not in STRUCTURED_OUTPUT_METHODS:
+        raise ConfigError(
+            f"LLM_STRUCTURED_OUTPUT must be one of {', '.join(STRUCTURED_OUTPUT_METHODS)}"
+        )
+
     return Settings(
         base_url=os.environ.get("LLM_BASE_URL", DEFAULT_BASE_URL),
         model=os.environ.get("LLM_MODEL", DEFAULT_MODEL),
@@ -58,4 +69,5 @@ def load_settings() -> Settings:
             os.environ.get("LLM_REQUESTS_PER_MINUTE", DEFAULT_REQUESTS_PER_MINUTE)
         ),
         disable_thinking=_as_bool(os.environ.get("LLM_DISABLE_THINKING"), default=True),
+        structured_output_method=method,
     )
