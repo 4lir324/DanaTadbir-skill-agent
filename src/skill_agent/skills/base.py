@@ -20,11 +20,31 @@ class SkillCard(BaseModel):
     )
 
 
+class SkillRequest(BaseModel):
+    """Everything a skill receives for one step of the plan."""
+
+    original_prompt: str = Field(description="The user's raw prompt (never rewritten).")
+    instruction: str = Field(description="The router's self-contained instruction for this step.")
+    previous_output: str | None = Field(
+        default=None, description="Result of the previous step, when this step builds on it."
+    )
+
+    def render(self) -> str:
+        """Plain-text form handed to an LLM-based skill."""
+        parts = [
+            f"User's original request:\n{self.original_prompt}",
+            f"Task for this step:\n{self.instruction}",
+        ]
+        if self.previous_output is not None:
+            parts.append(f"Result of the previous step (work on this):\n{self.previous_output}")
+        return "\n\n".join(parts)
+
+
 class Skill(ABC):
     """An executable skill. Subclasses own their full prompt/tooling."""
 
     card: SkillCard
 
     @abstractmethod
-    def run(self, request: str, llm: BaseChatModel) -> str:
-        """Handle `request` (a self-contained instruction, possibly with text) and return the answer."""
+    def run(self, request: SkillRequest, llm: BaseChatModel) -> str:
+        """Handle one step and return the answer text."""
