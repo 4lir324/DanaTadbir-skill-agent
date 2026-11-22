@@ -7,9 +7,12 @@ Makes ~2-3 LLM calls per prompt, throttled to the provider's rate limit.
 
 import argparse
 import json
+import logging
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
+
+import openai
 
 from evals.scoring import answer_ok, is_correct, outcome_of
 from skill_agent.agent import create_agent
@@ -22,7 +25,21 @@ PROMPT_PREVIEW = 60
 
 
 def run_case(agent, case: dict) -> dict:
-    state = agent.invoke(case["prompt"])
+    """Run one case. An LLM/network failure counts as a failed case instead of aborting the run."""
+    try:
+        state = agent.invoke(case["prompt"])
+    except openai.OpenAIError as error:
+        logging.getLogger(__name__).warning("Case %s failed: %s", case["id"], error)
+        return {
+            "id": case["id"],
+            "category": case["category"],
+            "prompt": case["prompt"],
+            "expected": case["expected"],
+            "outcome": f"error ({type(error).__name__})",
+            "routing_correct": False,
+            "answer_ok": answer_ok("", case.get("answer_contains")),
+            "answer": "",
+        }
     outcome = outcome_of(state)
     return {
         "id": case["id"],

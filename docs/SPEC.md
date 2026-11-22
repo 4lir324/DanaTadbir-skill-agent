@@ -127,3 +127,6 @@ Pushes are done by the repo owner (or with their explicit approval each time).
 3. The router does not always keep details such as the target language in a
    step's `input`, so every skill also receives the user's original prompt.
 4. Requests for more than 2 skills run the first 2 and say what was skipped.
+5. Structured output: `json_mode` with the schema shown in the prompt is the default.
+   `json_schema` timed out on Hetzner (after a 15/15 run) and is wrapped in an extra key on
+   Groq; `function_calling` also works. The method is configurable (`LLM_STRUCTURED_OUTPUT`).

@@ -1,6 +1,6 @@
 # Evaluation report
 
-- Date: 2026-11-22  |  Model: `Qwen/Qwen3.8-27B`
+- Date: 2026-11-23  |  Model: `Qwen/Qwen3.8-27B`
 - **Routing accuracy: 15/15 (100%)**
 - Calculator answers correct: 3/3
 
