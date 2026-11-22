@@ -9,6 +9,7 @@ from skill_agent.router import (
     build_system_prompt,
     sanitize,
 )
+from skill_agent.shortlist import select_candidates
 
 
 def _cards(n_extra=0):
@@ -64,8 +65,8 @@ def test_router_prompt_stays_bounded_with_many_skills():
     """The context-explosion requirement: prompt size depends on k, not on N."""
     small = build_system_prompt(_cards()[:2])
     llm = FakeStructuredLLM([RoutingDecision()])
-    router = Router(llm, k=4)
-    router.route("task number 7 please", _cards(n_extra=50))
+    cards = _cards(n_extra=50)
+    Router(llm).route("task number 7 please", select_candidates("task number 7 please", cards, k=4))
     sent_prompt = llm.calls[0][0].content
     assert sent_prompt.count("\n- ") <= 4  # only k cards rendered
     assert len(sent_prompt) < 3 * len(small) + 500
@@ -73,5 +74,5 @@ def test_router_prompt_stays_bounded_with_many_skills():
 
 def test_no_candidates_means_no_llm_call():
     llm = FakeStructuredLLM([])
-    result = Router(llm, k=2).route("zzzz qqqq", _cards(n_extra=10))
+    result = Router(llm).route("zzzz qqqq", [])
     assert result.steps == [] and llm.calls == []

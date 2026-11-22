@@ -7,7 +7,6 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field, ValidationError
 
-from skill_agent.shortlist import DEFAULT_K, SkillRetriever, select_candidates
 from skill_agent.skills.base import SkillCard
 
 logger = logging.getLogger(__name__)
@@ -97,19 +96,11 @@ def sanitize(decision: RoutingDecision, allowed: set[str]) -> RoutingDecision:
 
 
 class Router:
-    def __init__(
-        self,
-        llm: BaseChatModel,
-        retriever: SkillRetriever | None = None,
-        k: int = DEFAULT_K,
-    ) -> None:
+    def __init__(self, llm: BaseChatModel) -> None:
         self._structured_llm = llm.with_structured_output(RoutingDecision)
-        self._retriever = retriever
-        self._k = k
 
-    def route(self, prompt: str, cards: list[SkillCard]) -> RoutingDecision:
-        """Shortlist the cards, ask the LLM, validate. Never raises on bad LLM output."""
-        candidates = select_candidates(prompt, cards, self._retriever, self._k)
+    def route(self, prompt: str, candidates: list[SkillCard]) -> RoutingDecision:
+        """Ask the LLM to pick skills among `candidates`. Never raises on bad LLM output."""
         if not candidates:
             return RoutingDecision()
 
