@@ -5,7 +5,7 @@ import logging
 from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, PrivateAttr, ValidationError
 
 from skill_agent.skills.base import SkillCard
 
@@ -45,6 +45,16 @@ class RoutingDecision(BaseModel):
             "or the needed text is missing. Written in the user's language."
         ),
     )
+    # Not part of the LLM schema: set by `sanitize` when the 2-skill limit cut valid steps.
+    _skipped: list[str] = PrivateAttr(default_factory=list)
+
+    @property
+    def skipped(self) -> list[str]:
+        """Skills the router asked for but that were not run because of the limit."""
+        return list(self._skipped)
+
+    def mark_skipped(self, skills: list[str]) -> None:
+        self._skipped = list(skills)
 
 
 _SYSTEM_TEMPLATE = """\
@@ -89,10 +99,15 @@ def sanitize(decision: RoutingDecision, allowed: set[str]) -> RoutingDecision:
         logger.warning("Router returned unknown skill(s); dropped them")
     if len(steps) > MAX_SKILLS:
         logger.warning("Router returned %d skills; keeping the first %d", len(steps), MAX_SKILLS)
+        skipped = [step.skill for step in steps[MAX_SKILLS:]]
         steps = steps[:MAX_SKILLS]
+    else:
+        skipped = []
     if steps:
         steps[0] = steps[0].model_copy(update={"uses_previous_output": False})
-    return decision.model_copy(update={"steps": steps})
+    result = decision.model_copy(update={"steps": steps})
+    result.mark_skipped(skipped)
+    return result
 
 
 class Router:

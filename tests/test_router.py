@@ -43,6 +43,22 @@ def test_unknown_skills_dropped_and_limit_enforced():
     assert len(result.steps) <= MAX_SKILLS
 
 
+def test_skills_cut_by_the_limit_are_reported_as_skipped():
+    decision = RoutingDecision(steps=[_step("summarizer"), _step("translator"), _step("calculator")])
+    result = sanitize(decision, {"summarizer", "translator", "calculator"})
+    assert [s.skill for s in result.steps] == ["summarizer", "translator"]
+    assert result.skipped == ["calculator"]
+
+
+def test_unknown_skills_are_not_reported_as_skipped():
+    result = sanitize(RoutingDecision(steps=[_step("ghost"), _step("summarizer")]), {"summarizer"})
+    assert result.skipped == []
+
+
+def test_skipped_is_not_exposed_to_the_llm_schema():
+    assert "skipped" not in RoutingDecision.model_json_schema()["properties"]
+
+
 def test_first_step_never_uses_previous_output():
     decision = RoutingDecision(steps=[_step("summarizer", uses_previous_output=True)])
     assert sanitize(decision, {"summarizer"}).steps[0].uses_previous_output is False
