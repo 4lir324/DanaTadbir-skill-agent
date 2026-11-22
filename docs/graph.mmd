@@ -1,0 +1,28 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	shortlist(shortlist)
+	route(route)
+	run_step(run_step)
+	respond(respond)
+	clarify(clarify)
+	fallback(fallback)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> shortlist;
+	route -.-> clarify;
+	route -.-> fallback;
+	route -.-> run_step;
+	run_step -.-> respond;
+	shortlist --> route;
+	clarify --> __end__;
+	fallback --> __end__;
+	respond --> __end__;
+	run_step -.-> run_step;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
+
