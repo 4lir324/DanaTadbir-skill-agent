@@ -130,3 +130,8 @@ Pushes are done by the repo owner (or with their explicit approval each time).
 5. Structured output: `json_mode` with the schema shown in the prompt is the default.
    `json_schema` timed out on Hetzner (after a 15/15 run) and is wrapped in an extra key on
    Groq; `function_calling` also works. The method is configurable (`LLM_STRUCTURED_OUTPUT`).
+6. Provider presets (`config.py`): `hetzner` and `groq`, each reading only its own key variable.
+   The provider is detected from the key present, or set by `LLM_PROVIDER`. A bare `LLM_API_KEY`
+   is rejected (a Groq key once could have been sent to Hetzner's URL), and `LLM_BASE_URL`
+   selects a "custom" provider that assumes nothing (no Qwen-specific parameters).
+

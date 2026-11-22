@@ -25,25 +25,31 @@ quality, prompt quality and graph design, not on production concerns
 
 ## 1. How to run
 
-**Prerequisites:** Python 3.11+ (developed on 3.12) and an API key for an OpenAI-compatible LLM
-endpoint (default: Hetzner Experiments Inference, free while experimental).
+**Prerequisites:** Python 3.11+ (developed on 3.12) and a free API key for **either** Hetzner
+Experiments Inference (default, free while experimental) **or** Groq (free tier). Both run the same model.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e '.[dev]'
-cp .env.example .env        # then put your key in .env
+cp .env.example .env        # then put ONE key in .env: HETZNER_API_KEY or GROQ_API_KEY
 ```
+
+That is all the configuration needed: the provider is detected from the key you set, and
+**each key is only ever sent to its own provider** (the presets live in
+[`config.py`](src/skill_agent/config.py)). With only `GROQ_API_KEY=...` in `.env`, the agent uses
+Groq with the right endpoint, model and settings.
 
 **Environment variables** (read from `.env`, which is searched upward from the current directory):
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `LLM_API_KEY` | – (required; `HETZNER_API_KEY` is accepted as an alias) | API key |
-| `LLM_BASE_URL` | `https://inference.hetzner.com/v1` | OpenAI-compatible endpoint |
-| `LLM_MODEL` | `Qwen/Qwen3.8-27B` | Model name |
-| `LLM_REQUESTS_PER_MINUTE` | `9` | Client-side throttle (Hetzner allows 10/min) |
-| `LLM_DISABLE_THINKING` | `true` | Turns off Qwen "thinking" (see [section 6](#6-llm-provider-and-model)) |
+| `HETZNER_API_KEY` / `GROQ_API_KEY` | – (one is required) | Key of the provider you use; selects that provider's preset |
+| `LLM_PROVIDER` | detected from the key (`hetzner` if both are set) | `hetzner` or `groq`; use it to pick when both keys exist |
+| `LLM_MODEL` | preset: `Qwen/Qwen3.8-27B` (Hetzner), `qwen/qwen3.8-27b` (Groq) | Model name |
+| `LLM_REQUESTS_PER_MINUTE` | preset: `9` (Hetzner), `10` (Groq) | Client-side throttle |
+| `LLM_DISABLE_THINKING` | preset: `true` (Hetzner), `false` (Groq) | Turns off Qwen "thinking" (see [section 6](#6-llm-provider-and-model)); Groq rejects the parameter |
 | `LLM_STRUCTURED_OUTPUT` | `json_mode` | How the router asks for structured output: `json_mode` (JSON object + the schema in the prompt), `function_calling` or `json_schema` (see [section 6](#6-llm-provider-and-model) for why `json_schema` is not the default) |
+| `LLM_BASE_URL`, `LLM_API_KEY` | – | Any other OpenAI-compatible endpoint; also needs `LLM_MODEL`. `LLM_API_KEY` alone is rejected, so a key cannot be sent to a provider by mistake |
 
 ```bash
 python -m skill_agent "What is 15% of 240?"      # one-shot
@@ -51,7 +57,7 @@ python -m skill_agent                             # interactive; no memory betwe
 python -m skill_agent --plan "سلام، حالت چطوره؟"   # also show which skills were chosen
 python -m skill_agent --graph                     # print the graph as Mermaid
 python -m skill_agent.check_llm                   # 2-request connectivity check
-pytest                                            # 93 unit tests, no network needed
+pytest                                            # 101 unit tests, no network needed
 python -m evals.run                               # live evaluation, ~5 minutes (rate limit)
 ```
 
@@ -227,7 +233,7 @@ failure modes, and change the prompt only where a failure was observed.
 
 | Provider / model | Result |
 |---|---|
-| **Groq**, `qwen/qwen3.8-27b` (same model, "Preview" stage) | Works: **15/15** on the evaluation set, identical routing to Hetzner ([report](evals/results/REPORT-groq.md)). Only extra setting: `LLM_DISABLE_THINKING=false` (Groq rejects `chat_template_kwargs`). Limits shown in my console: 30 requests/min, **8K tokens/min**, 1K requests/day, 200K tokens/day |
+| **Groq**, `qwen/qwen3.8-27b` (same model, "Preview" stage) | Works: **15/15** on the evaluation set, identical routing to Hetzner ([report](evals/results/REPORT-groq.md)). Select it with just `GROQ_API_KEY` (the preset sets `LLM_DISABLE_THINKING=false`, since Groq rejects `chat_template_kwargs`). Limits shown in my console: 30 requests/min, **8K tokens/min**, 1K requests/day, 200K tokens/day |
 | Google AI Studio, `gemma-4-31b-it` (30.7B) | **Not usable in my tests:** HTTP 503 "high demand" on 2 of 3 requests, tool calling returned no `tool_calls` and leaked the model's `<thought>` text, and both thinking parameters were rejected |
 | OpenRouter, `google/gemma-4-31b-it:free` | Not usable when tried: HTTP 429 from the provider. Not tested further |
 
@@ -349,7 +355,7 @@ assistant are in the repo:
 ```
 src/skill_agent/   config, llm, text, safe_math, registry, shortlist, router, graph, agent, cli
 src/skill_agent/skills/   base + the four skills
-tests/             93 unit tests (fake LLMs; no network)
+tests/             101 unit tests (fake LLMs; no network)
 evals/             dataset, scoring, runner, results
 docs/              SPEC, PROMPT_NOTES, graph.mmd, task brief
 ```

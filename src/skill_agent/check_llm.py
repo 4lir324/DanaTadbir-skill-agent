@@ -23,7 +23,7 @@ class Ping(BaseModel):
 def main() -> int:
     try:
         settings = load_settings()
-        print(f"provider={settings.base_url} model={settings.model}")
+        print(f"provider={settings.provider} url={settings.base_url} model={settings.model}")
         llm = build_llm(settings)
 
         print("chat:", llm.invoke("Reply with the single word: pong").content)
