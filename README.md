@@ -25,13 +25,14 @@ quality, prompt quality and graph design, not on production concerns
 
 ## 1. How to run
 
-**Prerequisites:** Python 3.11+ (developed on 3.12) and a free API key for **either** Hetzner
-Experiments Inference (default, free while experimental) **or** Groq (free tier). Both run the same model.
+**Prerequisites:** Python 3.11+ (developed on 3.12) and a free API key for **either** Groq
+(free tier, **recommended**: the most stable in my tests) **or** Hetzner Experiments Inference
+(free while experimental, but I saw timeouts, see [section 6](#6-llm-provider-and-model)). Both run the same model.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e '.[dev]'
-cp .env.example .env        # then put ONE key in .env: HETZNER_API_KEY or GROQ_API_KEY
+cp .env.example .env        # then put ONE key in .env: GROQ_API_KEY (recommended) or HETZNER_API_KEY
 ```
 
 That is all the configuration needed: the provider is detected from the key you set, and
@@ -44,7 +45,7 @@ Groq with the right endpoint, model and settings.
 | Variable | Default | Meaning |
 |---|---|---|
 | `HETZNER_API_KEY` / `GROQ_API_KEY` | – (one is required) | Key of the provider you use; selects that provider's preset |
-| `LLM_PROVIDER` | detected from the key (`hetzner` if both are set) | `hetzner` or `groq`; use it to pick when both keys exist |
+| `LLM_PROVIDER` | detected from the key (`hetzner` if both are set) | `hetzner` or `groq`; set `LLM_PROVIDER=groq` when you have both keys and want the recommended one |
 | `LLM_MODEL` | preset: `Qwen/Qwen3.8-27B` (Hetzner), `qwen/qwen3.8-27b` (Groq) | Model name |
 | `LLM_REQUESTS_PER_MINUTE` | preset: `9` (Hetzner), `10` (Groq) | Client-side throttle |
 | `LLM_DISABLE_THINKING` | preset: `true` (Hetzner), `false` (Groq) | Turns off Qwen "thinking" (see [section 6](#6-llm-provider-and-model)); Groq rejects the parameter |
@@ -208,11 +209,20 @@ failure modes, and change the prompt only where a failure was observed.
 
 ## 6. LLM provider and model
 
-- **Provider:** Hetzner Experiments Inference (OpenAI-compatible). Per its documentation it is
-  **free while it stays in experimental status** (rate limit: 10 requests / 60 s per key;
-  request content is not stored). Hetzner says it will announce changes by email.
-- **Model:** `Qwen/Qwen3.8-27B`, a **dense model with 27 billion parameters** (Apache 2.0),
-  so within the <= 35B limit.
+- **Recommended provider: Groq free tier** (OpenAI-compatible), model `qwen/qwen3.8-27b`. It scored
+  **15/15 on every evaluation run since the structured-output fix** (three runs, the last from a clean
+  clone of the final `main` with only `GROQ_API_KEY` in `.env`). Limits shown in my console: 30
+  requests/min but only **8K tokens/min**, 1K requests/day. The model is in Groq's "Preview" stage.
+- **Hetzner Experiments Inference** (OpenAI-compatible, the default when both keys are set). Per its
+  documentation it is **free while it stays in experimental status** (10 requests / 60 s per key;
+  request content is not stored). **Reliability caveat from my own runs (2026-11-23):** an evaluation of
+  the final `main` from a clean clone scored **11/15**; all four failures were request timeouts
+  (cases 1, 6, 12, 13) and **none was a wrong routing**; retrying case 1 timed out again. The same
+  day, earlier, it scored 15/15 (the committed [`REPORT.md`](evals/results/REPORT.md)). I did not
+  commit the 11/15 report, so this is my observation from the terminal, not a file in the repo. Use
+  Groq if you see timeouts.
+- **Model:** Qwen3.8-27B (`Qwen/Qwen3.8-27B` on Hetzner, `qwen/qwen3.8-27b` on Groq), a **dense model
+  with 27 billion parameters** (Apache 2.0), so within the <= 35B limit.
 - **Thinking mode is turned off.** Qwen3.x thinks by default. In a connection test, with thinking
   on, the routing JSON contained repeated items (`["summarizer","translator","summarizer", ...]`) and took
   200 tokens / 4.4 s; with thinking off it was correct, 26 tokens / 2.3 s. Set via
@@ -228,12 +238,13 @@ failure modes, and change the prompt only where a failure was observed.
   enforce a schema, the router puts the real JSON schema into the prompt and validates the reply
   with Pydantic (one retry, then fallback). First attempt without the schema in the prompt made a
   model omit a required field, which is how I found that the schema must be shown.
-- **Other providers I tried** (the client is any OpenAI-compatible endpoint; observations from
-  2026-11-22, free tiers change):
+- **Providers tested** (the client is any OpenAI-compatible endpoint; observations from
+  2026-11-22/23, free tiers change):
 
 | Provider / model | Result |
 |---|---|
-| **Groq**, `qwen/qwen3.8-27b` (same model, "Preview" stage) | Works: **15/15** on the evaluation set, identical routing to Hetzner ([report](evals/results/REPORT-groq.md)). Select it with just `GROQ_API_KEY` (the preset sets `LLM_DISABLE_THINKING=false`, since Groq rejects `chat_template_kwargs`). Limits shown in my console: 30 requests/min, **8K tokens/min**, 1K requests/day, 200K tokens/day |
+| **Groq**, `qwen/qwen3.8-27b` (same model, "Preview" stage) | **Recommended.** **15/15** on the evaluation set, identical routing to Hetzner ([report](evals/results/REPORT-groq.md)). Select it with just `GROQ_API_KEY` (the preset sets `LLM_DISABLE_THINKING=false`, since Groq rejects `chat_template_kwargs`). Limits: 30 requests/min, **8K tokens/min**, 1K requests/day, 200K tokens/day |
+| **Hetzner**, `Qwen/Qwen3.8-27B` | Works, but timeouts appeared: 15/15 earlier, then **11/15 (4 timeouts, 0 wrong routings)**; see above |
 | Google AI Studio, `gemma-4-31b-it` (30.7B) | **Not usable in my tests:** HTTP 503 "high demand" on 2 of 3 requests, tool calling returned no `tool_calls` and leaked the model's `<thought>` text, and both thinking parameters were rejected |
 | OpenRouter, `google/gemma-4-31b-it:free` | Not usable when tried: HTTP 429 from the provider. Not tested further |
 
@@ -289,7 +300,8 @@ the acceptable outcomes (for chat prompts, `general_chat` and `fallback` both co
 Per-prompt table: [`evals/results/REPORT.md`](evals/results/REPORT.md). Reproduce with
 `python -m evals.run` (add `--tag NAME` to keep results from another provider separate). The same
 set gives 15/15 on Groq with the same defaults ([report](evals/results/REPORT-groq.md)), and the earlier
-Hetzner `json_schema` run was also 15/15 with identical routing. All runs use the same model, so this shows
+Hetzner `json_schema` run was also 15/15 with identical routing. A later Hetzner run scored 11/15, but all four
+misses were request timeouts, not routing mistakes (see section 6). All runs use the same model, so this shows
 provider-independence, not model-independence.
 
 **How much to trust this:** 15 prompts cannot tell 95% from 70% true accuracy; the set was
@@ -326,7 +338,9 @@ Treat it as a working sanity check with a score, not a benchmark.
 - **Provider risk:** the free tier is experimental and may end or change; behaviour did change between
   two days (see the `json_schema` timeouts in section 6). `json_mode` does not enforce the schema, so a
   malformed reply falls back to chat after one retry instead of being rejected by the provider.
-  The evaluation runner records an LLM failure as a failed case and continues.
+  The evaluation runner records an LLM failure as a failed case and continues (that is how the
+  Hetzner 11/15 run finished instead of aborting). Hetzner timed out on 4 of 15 cases in the last
+  run, so a reviewer on Hetzner may see slow or failed requests; Groq is the safer choice.
 - **Prompt-injection:** skills are told to treat embedded instructions as content (tested once on the
   translator), but there is no systematic injection testing.
 - **Calculator scope** (see assumptions); no unit or currency support.

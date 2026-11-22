@@ -93,10 +93,11 @@ first). Evaluation uses a whitelist-based `ast` evaluator (numbers, + - * / **
 ### 4.6 LLM provider
 OpenAI-compatible client, configured by environment variables:
 `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`.
-- Primary: Hetzner Experiments Inference, `Qwen3.8-27B` (dense, 27B, free
-  while experimental). Limits: 10 requests/min -> client has throttling +
-  retry on 429.
-- Documented alternative: OpenRouter free model `google/gemma-4-31b-it:free` (30.7B).
+- Provider presets (see section 7, item 6): `groq` (recommended, `qwen/qwen3.8-27b`, 15/15 on every
+  run after the structured-output fix) and `hetzner` (`Qwen3.8-27B`, free while experimental;
+  10 requests/min; timed out on 4 of 15 evaluation cases in the last run). Client throttles and
+  retries on 429/timeouts.
+- Google AI Studio (Gemma) and OpenRouter free models were tried and found unusable (README section 6).
 - Constraint from the brief: free tier, <= 35B parameters.
 
 ## 5. Out of scope
