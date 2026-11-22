@@ -10,7 +10,7 @@ from langchain_openai import ChatOpenAI
 from skill_agent.config import Settings, load_settings
 
 MAX_RETRIES = 5
-REQUEST_TIMEOUT_SECONDS = 120
+REQUEST_TIMEOUT_SECONDS = 60
 
 
 def build_llm(settings: Settings | None = None) -> ChatOpenAI:

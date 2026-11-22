@@ -10,9 +10,10 @@ DEFAULT_MODEL = "Qwen/Qwen3.8-27B"
 # Hetzner's free tier allows 10 requests / 60 s; stay slightly below it.
 DEFAULT_REQUESTS_PER_MINUTE = 9
 # How the router asks the LLM for structured output. Providers differ in what they support
-# well (Groq wraps `json_schema` output in an extra key, so it needs another method).
+# well: Groq wraps `json_schema` replies in an extra key, and Hetzner's `json_schema` path
+# started timing out. `json_mode` worked on both; Pydantic validation + retry guard the output.
 STRUCTURED_OUTPUT_METHODS = ("json_schema", "function_calling", "json_mode")
-DEFAULT_STRUCTURED_OUTPUT_METHOD = "json_schema"
+DEFAULT_STRUCTURED_OUTPUT_METHOD = "json_mode"
 
 
 class ConfigError(RuntimeError):

@@ -62,7 +62,7 @@ def test_build_llm_sets_thinking_off_and_retries(monkeypatch):
 
 def test_structured_output_method_default_and_validation(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "k")
-    assert load_settings().structured_output_method == "json_schema"
+    assert load_settings().structured_output_method == "json_mode"
     monkeypatch.setenv("LLM_STRUCTURED_OUTPUT", "function_calling")
     assert load_settings().structured_output_method == "function_calling"
     monkeypatch.setenv("LLM_STRUCTURED_OUTPUT", "nonsense")

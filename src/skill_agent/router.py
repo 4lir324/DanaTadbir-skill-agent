@@ -1,5 +1,6 @@
 """Router: decides which skill(s) a prompt needs and returns a validated plan."""
 
+import json
 import logging
 
 from langchain_core.exceptions import OutputParserException
@@ -79,6 +80,15 @@ if it is listed.
 """
 
 
+def json_instruction(model: type[BaseModel]) -> str:
+    """Prompt addition for `json_mode`, which (unlike `json_schema`) never shows the schema to the model."""
+    schema = json.dumps(model.model_json_schema(), ensure_ascii=False, separators=(",", ":"))
+    return (
+        "\nReply with a single JSON object (and nothing else) that matches this JSON schema; "
+        f"use `null` or [] for optional fields that do not apply:\n{schema}"
+    )
+
+
 def render_cards(cards: list[SkillCard]) -> str:
     lines = []
     for card in cards:
@@ -111,7 +121,7 @@ def sanitize(decision: RoutingDecision, allowed: set[str]) -> RoutingDecision:
 
 
 class Router:
-    def __init__(self, llm: BaseChatModel, method: str = "json_schema") -> None:
+    def __init__(self, llm: BaseChatModel, method: str = "json_mode") -> None:
         self._structured_llm = llm.with_structured_output(RoutingDecision, method=method)
         self._json_mode = method == "json_mode"
 
@@ -121,8 +131,8 @@ class Router:
             return RoutingDecision()
 
         system_prompt = build_system_prompt(candidates)
-        if self._json_mode:  # some providers require the word "JSON" in the prompt
-            system_prompt += "\nReply with a single JSON object."
+        if self._json_mode:
+            system_prompt += json_instruction(RoutingDecision)
         messages = [
             SystemMessage(system_prompt),
             HumanMessage(prompt),

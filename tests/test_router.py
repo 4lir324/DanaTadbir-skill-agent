@@ -79,13 +79,15 @@ def test_gives_up_after_two_failures_with_empty_decision():
 
 def test_router_prompt_stays_bounded_with_many_skills():
     """The context-explosion requirement: prompt size depends on k, not on N."""
-    small = build_system_prompt(_cards()[:2])
-    llm = FakeStructuredLLM([RoutingDecision()])
-    cards = _cards(n_extra=50)
-    Router(llm).route("task number 7 please", select_candidates("task number 7 please", cards, k=4))
-    sent_prompt = llm.calls[0][0].content
-    assert sent_prompt.count("\n- ") <= 4  # only k cards rendered
-    assert len(sent_prompt) < 3 * len(small) + 500
+    llm = FakeStructuredLLM([RoutingDecision(), RoutingDecision()])
+    router = Router(llm)
+    prompt = "task number 7 please"
+    few, many = _cards(n_extra=2), _cards(n_extra=50)
+    router.route(prompt, select_candidates(prompt, few, k=4))
+    router.route(prompt, select_candidates(prompt, many, k=4))
+    sent_few, sent_many = llm.calls[0][0].content, llm.calls[1][0].content
+    assert sent_many.count("\n- ") <= 4  # only k cards rendered
+    assert abs(len(sent_many) - len(sent_few)) < 300  # 25x more skills, same prompt size
 
 
 def test_no_candidates_means_no_llm_call():
@@ -98,5 +100,8 @@ def test_json_mode_adds_json_hint_to_the_prompt():
     llm = FakeStructuredLLM([RoutingDecision(), RoutingDecision()])
     cards = _cards()
     Router(llm, method="json_mode").route("hello", cards)
-    Router(llm).route("hello", cards)
-    assert "JSON" in llm.calls[0][0].content and "JSON" not in llm.calls[1][0].content
+    Router(llm, method="json_schema").route("hello", cards)
+    with_hint, without_hint = llm.calls[0][0].content, llm.calls[1][0].content
+    assert "JSON schema" in with_hint and "JSON schema" not in without_hint
+    # the model must be shown the real field names, not left to guess them
+    assert all(name in with_hint for name in ("steps", "skill", "uses_previous_output"))
