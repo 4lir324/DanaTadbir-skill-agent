@@ -30,8 +30,13 @@ _STOPWORDS = frozenset(
 )
 
 
+def _stem(token: str) -> str:
+    # Tokens with digits are identifiers ("model2", "gpt4"): truncating would merge them.
+    return token if any(ch.isdigit() for ch in token) else token[:_STEM_LENGTH]
+
+
 def _stems(text: str) -> set[str]:
-    return {token[:_STEM_LENGTH] for token in tokenize(text) if token not in _STOPWORDS}
+    return {_stem(token) for token in tokenize(text) if token not in _STOPWORDS}
 
 
 def _card_text(card: SkillCard) -> str:
