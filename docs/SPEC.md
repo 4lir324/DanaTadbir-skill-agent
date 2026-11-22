@@ -24,21 +24,22 @@ Source brief: `docs/task/AIEngineerTask.pdf` + interviewer's voice note
 ## 3. Graph
 
 ```
- user prompt
-     |
- [shortlist]   registry -> top-k candidate skills (only their short cards go to the router)
-     |
- [router]      LLM -> RoutingDecision (Pydantic): ordered skills (1-2) + per-skill input + confidence
-     |
- [validate]    schema OK? known skills? <=2? confident? else -> fallback
-     |
- [execute]     run skill 1 -> (optionally) feed its output to skill 2
-     |
- [respond]     assemble final answer
+START -> shortlist -> route --+--> run_step <-+   (loops once per planned step)
+                              |       |       |
+                              |       +-------+--> respond --> END
+                              +--> clarify  --> END
+                              +--> fallback --> END
 ```
 
-LangGraph nodes: `shortlist`, `router`, `execute_skill` (loops over the plan),
-`fallback`, `respond`. Conditional edges after `router`.
+Nodes (see `src/skill_agent/graph.py`, diagram in `docs/graph.mmd`):
+- `shortlist`: registry cards -> at most k candidates.
+- `route`: LLM -> `RoutingDecision` (Pydantic), sanitized (unknown skills dropped,
+  2-skill cap, first step never "chained").
+- `run_step`: runs one planned skill with the user's original prompt, the step
+  instruction and (if chained) the previous output.
+- `respond`: chained -> last output; independent -> both, labelled; adds a note
+  when skills were skipped by the limit.
+- `clarify` / `fallback`: see 4.3.
 
 ## 4. Key design decisions
 
@@ -108,17 +109,20 @@ more than 4 skills, more than 2 simultaneous skills.
 |---|---|---|
 | 0 | `docs/spec` | `CLAUDE.md`, this spec |
 | 1 | `feat/scaffold-llm` | `pyproject.toml`, config, LLM client (throttle/retry), connection check |
-| 2 | `feat/registry-router` | Skill registry, shortlist, `RoutingDecision`, router node |
-| 3 | `feat/skills` | The four skills + safe calculator + unit tests |
+| 2 | `feat/registry-router` | Skill registry, shortlist, `RoutingDecision`, router |
+| 3 | `feat/skills` | The four skills, safe calculator, prompt notes |
 | 4 | `feat/graph-cli` | LangGraph wiring, fallback, multi-skill execution, CLI |
-| 5 | `feat/evaluation` | 10-15 prompt eval set + runner + accuracy report |
-| 6 | `docs/readme` | Final README with all required sections |
+| 5 | `feat/evaluation` | 15-prompt eval set + runner + report |
+| 5b | `fix/over-limit-notice` | Tell the user when a requested skill was skipped |
+| 6 | `docs/readme` | README, spec sync |
 
-Each branch is merged into `main` through a pull request. Pushes are done by
-the repo owner (or with their explicit approval each time).
+Pushes are done by the repo owner (or with their explicit approval each time).
 
-## 7. Open questions
-1. Does the Hetzner endpoint support structured output / tool calling?
-   (checked in step 1; fallback: JSON mode + Pydantic validation)
-2. Shortlist retriever: lexical only, or add embeddings?
-3. Prompt-improvement example for README: record v1 vs final during step 3.
+## 7. Decisions taken during implementation
+1. Hetzner supports structured output and tool calling (verified). Qwen3.x
+   "thinking" must be off: with it on, the routing JSON contained repeated items.
+2. Shortlist retriever: lexical only (IDF-weighted stem overlap, Persian/English
+   stopwords, identifier tokens not truncated). Embeddings left as an extension.
+3. The router does not always keep details such as the target language in a
+   step's `input`, so every skill also receives the user's original prompt.
+4. Requests for more than 2 skills run the first 2 and say what was skipped.
